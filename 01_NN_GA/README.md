@@ -1,0 +1,1 @@
+This code is original from [geeksforgeeks](https://www.geeksforgeeks.org/artificial-intelligence/introduction-to-optimization-with-genetic-algorithm/)
