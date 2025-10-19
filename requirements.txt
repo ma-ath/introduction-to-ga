@@ -8,3 +8,4 @@ torch==2.9.0
 torchvision==0.24.0
 # torchvision==0.23.0+cpu
 subspyces==0.0.5
+ipywidgets==8.1.7
