@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from differential_evolution import differential_evolution
+from evolutionary_strategy import evolutionary_strategy
 from problems import sphere, rosenbrock, rastrigin, ackley, griewank, schwefel, levy
 
 
@@ -17,7 +17,7 @@ def main():
 
     for name, problem in problems.items():
         print(f"Optimizing {name} function...")
-        best, best_fitness, history = differential_evolution(problem, bounds=(-500, 500), vector_size=10, NP=50, generations=10000, F=1.5)
+        best, best_fitness, history = evolutionary_strategy(problem, bounds=(-500, 500), vector_size=10, mu=50, generations=10000, lam=100, sigma=1, plus_strategy=True)
         best_fitness_history, mean_fitness_history = history
         print(f"Best Fitness: {best_fitness}")
         print(f"Best Individual: {best}\n")
@@ -28,10 +28,11 @@ def main():
         plt.title(f'Fitness over Generations for {name} Function')
         plt.xlabel('Generation')
         plt.ylabel('Fitness')
-        # plt.yscale('log')
+        plt.yscale('log')
+        plt.xscale('log')
         plt.legend()
         plt.grid()
-        plt.show()
+        plt.savefig(f"es_optimization_{name}.png", dpi=300, bbox_inches='tight')
         plt.close()
 
 
