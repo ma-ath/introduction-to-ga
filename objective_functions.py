@@ -29,9 +29,13 @@ def ackley(x: torch.Tensor) -> torch.Tensor:
 
 def griewank(x: torch.Tensor) -> torch.Tensor:
     assert x.dim() <= 2, "Input tensor must be 1D or 2D"
+    device = x.device  # ensure consistent device usage
     if x.dim() == 2:
-        return torch.sum(x**2, dim=1)/4000 - torch.prod(torch.cos(x/torch.sqrt(torch.arange(1, x.size(1)+1).unsqueeze(0))), dim=1) + 1
-    return torch.sum(x**2)/4000 - torch.prod(torch.cos(x/torch.sqrt(torch.arange(1, len(x)+1)))) + 1
+        idx = torch.arange(1, x.size(1) + 1, device=device).float()
+        return torch.sum(x**2, dim=1)/4000 - torch.prod(torch.cos(x / torch.sqrt(idx.unsqueeze(0))), dim=1) + 1
+    else:
+        idx = torch.arange(1, len(x) + 1, device=device).float()
+        return torch.sum(x**2)/4000 - torch.prod(torch.cos(x / torch.sqrt(idx))) + 1
 
 def schwefel(x: torch.Tensor) -> torch.Tensor:
     assert x.dim() <= 2, "Input tensor must be 1D or 2D"
