@@ -1,3 +1,7 @@
+"""
+This code is original from [geeksforgeeks](https://www.geeksforgeeks.org/artificial-intelligence/introduction-to-optimization-with-genetic-algorithm/)
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.datasets import make_classification
