@@ -9,6 +9,7 @@ class ResultType(TypedDict):
     best_solution: torch.Tensor
     best_fitness: torch.Tensor
     fitness_history: dict[str, list[float]]
+    n_evaluations: int
 
 
 def de(
@@ -23,6 +24,7 @@ def de(
         device: Optional[torch.device] = None,
         maximize: bool = False) -> ResultType:
     """Simple Differential Evolution (DE) implementation."""
+    number_of_function_evaluations = 0
 
     lower, upper = search_boundary
 
@@ -35,6 +37,7 @@ def de(
                         torch.rand((n_population, dimension), device=device) * 0.1  # small perturbation
         population = torch.clamp(population, lower, upper)
     fitness = problem(population)
+    number_of_function_evaluations += population.shape[0]
 
     best_fitness_history = []
     mean_fitness_history = []
@@ -63,6 +66,7 @@ def de(
 
         # Selection
         f_trials = problem(trials)
+        number_of_function_evaluations += trials.shape[0]
         if maximize:
             better_mask = f_trials > fitness
         else:
@@ -85,5 +89,6 @@ def de(
         "fitness_history": {
             "best": best_fitness_history,
             "mean": mean_fitness_history
-        }
+        },
+        "n_evaluations": number_of_function_evaluations
     }

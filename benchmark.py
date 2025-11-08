@@ -5,7 +5,7 @@ if __name__ == "__main__":
     from objective_functions import sphere, rosenbrock, rastrigin, ackley, griewank, schwefel, levy
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logger = setup_logger(__name__, console_level=None, file_level="info", telegram_level=None)
+    logger = setup_logger(console_level=None, file_level="DEBUG", telegram_level=None)
     logger.debug(f"Using device: {device}")
 
 
@@ -55,10 +55,11 @@ if __name__ == "__main__":
     for algorithm_name, algorithm_info in algorithms.items():
         results[algorithm_name] = {}
         for objective_function in objective_functions:
-            logger.info(f"Testing algorithm: {algorithm_name} on function: {objective_function.__name__}")
+            logger.info(f"Testing algorithm: \"{algorithm_info['name']}\" on function: \"{objective_function.__name__}\"")
 
             solution = algorithm_info["implementation"](
                 problem=objective_function,
                 **algorithm_info["kwargs"]
             )
             results[algorithm_name][objective_function.__name__] = solution
+            logger.debug(f"Best fitness {solution['best_fitness']} found with {solution['n_evaluations']} evaluations.")

@@ -8,6 +8,7 @@ class ResultType(TypedDict):
     best_solution: torch.Tensor
     best_fitness: torch.Tensor
     fitness_history: dict[str, list[float]]
+    n_evaluations: int
 
 
 def cmaes(
@@ -19,6 +20,7 @@ def cmaes(
         maximize: bool = False,
     ) -> ResultType:
     """(sample_size/mu_w, lambda)-CMA-ES — based on Hansen's 'purecmaes.m'"""
+    number_of_function_evaluations = 0
 
     # --- Initialization ---
     dim = torch.tensor(dimension, device=device)                            # n
@@ -72,6 +74,7 @@ def cmaes(
 
         # Evaluate the fitness of the samples and sort them (selection)
         fitness = problem(x.T)
+        number_of_function_evaluations += x.shape[1]
         fitness_sort_index = torch.argsort(fitness, descending=maximize)
         fitness = fitness[fitness_sort_index]
 
@@ -143,5 +146,6 @@ def cmaes(
         "fitness_history": {
             "best": best_fitness_history,
             "mean": mean_fitness_history
-        }
+        },
+        "n_evaluations": number_of_function_evaluations
     }

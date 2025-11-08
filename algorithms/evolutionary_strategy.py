@@ -8,6 +8,7 @@ class ResultType(TypedDict):
     best_solution: torch.Tensor
     best_fitness: torch.Tensor
     fitness_history: dict[str, list[float]]
+    n_evaluations: int
 
 
 def es(
@@ -21,12 +22,14 @@ def es(
         plus_strategy: bool = True,
         maximize: bool = False) -> ResultType:
     """Simple Evolutionary Strategy (ES) implementation."""
+    number_of_function_evaluations = 0
 
     lower, upper = search_boundary
 
     # Randomly initialize population
     parents = torch.rand((n_parents, dimension)) * (upper - lower) + lower
     fitness = problem(parents)
+    number_of_function_evaluations += parents.shape[0]
 
     best_fitness_history = []
     mean_fitness_history = []
@@ -39,6 +42,7 @@ def es(
         offspring = parent + step_size * torch.randn(n_offspring, dimension)
         offspring = torch.clamp(offspring, lower, upper)
         offspring_fitness = problem(offspring)
+        number_of_function_evaluations += offspring.shape[0]
 
         # --- Selection ---
         if plus_strategy:
@@ -74,5 +78,6 @@ def es(
         "fitness_history": {
             "best": best_fitness_history,
             "mean": mean_fitness_history
-        }
+        },
+        "n_evaluations": number_of_function_evaluations
     }

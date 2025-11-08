@@ -1,5 +1,9 @@
+# Folders
 .venv/
 __pycache__/
 data/
 exdata/
 ppdata/
+
+# Files
+*.log
