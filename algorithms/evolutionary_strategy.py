@@ -15,7 +15,8 @@ def es(
         problem: Callable[[torch.Tensor], torch.Tensor],
         dimension: int = 10,
         search_boundary: tuple = (-5, 5),
-        n_generations: int = 200,
+        max_problem_evaluations: int = 200,
+        stop_fitness: float = 1e-10,
         n_parents: int = 10,
         n_offspring: int = 40,
         step_size: float = 0.1,
@@ -35,12 +36,18 @@ def es(
     mean_fitness_history = []
 
     # === Main loop ===
-    for _ in (pbar := tqdm(range(n_generations), desc="ES Progress")):
+    pbar = tqdm(total=max_problem_evaluations, desc="ES Progress")
+    while number_of_function_evaluations < max_problem_evaluations:
         # --- Generate λ offspring ---
         parents_indices = torch.randint(0, n_parents, (n_offspring,))
         parent = parents[parents_indices]
         offspring = parent + step_size * torch.randn(n_offspring, dimension)
         offspring = torch.clamp(offspring, lower, upper)
+        
+        if number_of_function_evaluations + offspring.shape[0] > max_problem_evaluations:
+            # Limit evaluations if exceeding max allowed
+            offspring = offspring[:max_problem_evaluations - number_of_function_evaluations]
+        
         offspring_fitness = problem(offspring)
         number_of_function_evaluations += offspring.shape[0]
 
@@ -65,6 +72,12 @@ def es(
             "best_fitness": best_fitness_history[-1].item(),
             "mean_fitness": mean_fitness_history[-1].item()
         })
+        pbar.update(offspring.shape[0])
+
+        if (maximize and torch.max(fitness) >= stop_fitness) or \
+           (not maximize and torch.min(fitness) <= stop_fitness):
+            break
+    pbar.close()
 
     # Return best solution found
     if maximize:

@@ -19,7 +19,8 @@ def de(
         CR: float = 0.7,
         dimension: int = 10,
         search_boundary: tuple = (-5, 5),
-        n_generations: int = 100,
+        stop_fitness: float = 1e-10,
+        max_problem_evaluations: int = 100,
         initial_solution: Optional[torch.Tensor] = None,
         device: Optional[torch.device] = None,
         maximize: bool = False) -> ResultType:
@@ -43,7 +44,8 @@ def de(
     mean_fitness_history = []
 
     # Optimization loop
-    for _ in (pbar := tqdm(range(n_generations), desc="DE Progress")):
+    pbar = tqdm(total=max_problem_evaluations, desc="DE Progress")
+    while number_of_function_evaluations < max_problem_evaluations:
         # Pick three *distinct* indices not equal itself. We do this for all individuals in parallel.
         idxs = torch.arange(n_population, device=device).unsqueeze(0).repeat(n_population, 1)
         mask = torch.eye(n_population, dtype=torch.bool, device=device)
@@ -65,8 +67,16 @@ def de(
         trials = torch.where(cross_points, mutants, population)
 
         # Selection
-        f_trials = problem(trials)
-        number_of_function_evaluations += trials.shape[0]
+        if number_of_function_evaluations + trials.shape[0] <= max_problem_evaluations:
+            f_trials = problem(trials)
+            number_of_function_evaluations += f_trials.shape[0]
+        else:
+            # Limit evaluations if exceeding max allowed
+            f_trials = problem(trials[:max_problem_evaluations - number_of_function_evaluations])
+            number_of_function_evaluations += f_trials.shape[0]
+            f_trials = torch.nn.functional.pad(f_trials, (0, trials.shape[0] - f_trials.shape[0]),
+                                               value=float('inf') if not maximize else float('-inf'))
+                 
         if maximize:
             better_mask = f_trials > fitness
         else:
@@ -82,6 +92,13 @@ def de(
 
         # Update progress bar
         pbar.set_postfix({"best_fitness": best_fitness_history[-1], "mean_fitness": mean_fitness_history[-1]})
+        pbar.update(trials.shape[0])
+
+        if (maximize and fitness[best_idx] >= stop_fitness) or \
+           (not maximize and fitness[best_idx] <= stop_fitness):
+            break
+
+    pbar.close()
 
     return {
         "best_solution": population[best_idx],
