@@ -43,6 +43,7 @@ if __name__ == "__main__":
             "implementation": cmaes,
             "kwargs": {
                 "dimension": 3,
+                "max_problem_evaluations": 200,
                 "stop_fitness": 1e-10,
                 "max_epochs": 10000,
                 "device": device,

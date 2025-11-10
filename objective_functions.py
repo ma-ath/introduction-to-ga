@@ -59,8 +59,6 @@ def levy(x: torch.Tensor) -> torch.Tensor:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
-    import numpy as np
     import os
 
     # Define input tensors for testing
@@ -94,7 +92,6 @@ if __name__ == "__main__":
 
         # Stack the grid into a 2D tensor: shape (N*N, 2)
         grid = torch.stack([xx.reshape(-1), yy.reshape(-1)], dim=1)
-
 
         z = function(grid)  # Evaluate in batch
         z = z.reshape(n_plot_points, n_plot_points).detach().numpy()

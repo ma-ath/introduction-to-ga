@@ -15,9 +15,10 @@ def cmaes(
         problem: Callable[[torch.Tensor], torch.Tensor],
         dimension: int = 20,
         stop_fitness: float = 1e-10,
-        max_epochs: int = 10000,
+        max_problem_evaluations: int = 200,
         device: Optional[torch.device] = None,
         maximize: bool = False,
+        **kwargs
     ) -> ResultType:
     """(sample_size/mu_w, lambda)-CMA-ES — based on Hansen's 'purecmaes.m'"""
     number_of_function_evaluations = 0
@@ -61,13 +62,16 @@ def cmaes(
     chiN = torch.sqrt(dim) * (1 - 1 / (4 * dim) + 1 / (21 * dim**2))  #  This is the Expected value of ||N(0,I)|| == norm(randn(N,1))
 
     # --- Generation Loop ---
-    counteval = 0                                   # Number of evaluated individuals
     best_fitness_history = []
     mean_fitness_history = []
-    for g in tqdm(range(1, max_epochs // population_size + 1), desc="Evolving", unit="gen"):
-        if counteval >= max_epochs:
-            break
+    generation_number = 1
+    pbar = tqdm(total=max_problem_evaluations, desc="CMA-ES Progress")
+    while number_of_function_evaluations < max_problem_evaluations:
         # Sample a new population of search points
+        # Adjust population size if exceeding max evaluations
+        if (number_of_function_evaluations + population_size > max_problem_evaluations):
+            population_size = max_problem_evaluations - number_of_function_evaluations
+
         z = torch.randn(dimension, population_size, device=device)
         y = B @ (D.unsqueeze(1) * z)
         x = mean.unsqueeze(1) + sigma * y
@@ -86,11 +90,9 @@ def cmaes(
         p_s = (1 - c_s) * p_s + torch.sqrt(c_s * (2 - c_s) * effective_sample_size) * invsqrtC @ y_w
         sigma *= torch.exp((c_s / d_s) * (torch.linalg.norm(p_s) / chiN - 1))
 
-        # xold = mean.copy()
-
         # Covariance matrix adaptation
         h_s = torch.where(  # Heaviside step function
-            torch.linalg.norm(p_s) / torch.sqrt(1 - (1 - c_s)**(2 * (g + 1)))
+            torch.linalg.norm(p_s) / torch.sqrt(1 - (1 - c_s)**(2 * (generation_number + 1)))
                 <
             (1.4 + 2 / (dim + 1)) * chiN,
             torch.tensor(1.0, device=device),
@@ -104,15 +106,6 @@ def cmaes(
         )
 
         # Adapt covariance matrix C
-        # TODO: Check that
-        C = (
-            (1 - c_1 - c_mu) * C
-            + c_1 * (
-                torch.outer(p_c, p_c) + (1 - h_s) * c_c * (2 - c_c) * C
-            )
-            + c_mu * w_o * y[:, fitness_sort_index[:sample_size]] @ y[:, fitness_sort_index[:sample_size]].T
-        )
-
         # NOTE: I gave up on implementing the paper version. From here on I'm following the purecmaes.m code
         # d_h_s = (1 - h_s) * c_c * (2 - c_c)
         # C = (
@@ -121,9 +114,17 @@ def cmaes(
         #     + c_mu * w_o * y[:, fitness_sort_index[:sample_size]] @ y[:, fitness_sort_index[:sample_size]].T
         # )
 
+        C = (
+            (1 - c_1 - c_mu) * C
+            + c_1 * (
+                torch.outer(p_c, p_c) + (1 - h_s) * c_c * (2 - c_c) * C
+            )
+            + c_mu * w_o * y[:, fitness_sort_index[:sample_size]] @ y[:, fitness_sort_index[:sample_size]].T
+        )
+
         # Update B and D from C (eigendecomposition)
-        if counteval - eigeneval > population_size / (c_1 + c_mu) / dim / 10:
-            eigeneval = counteval
+        if number_of_function_evaluations - eigeneval > population_size / (c_1 + c_mu) / dim / 10:
+            eigeneval = number_of_function_evaluations
             C = torch.triu(C) + torch.triu(C, 1).T  # enforce symmetry
             D2, B = torch.linalg.eigh(C)
             D = torch.sqrt(torch.maximum(D2, torch.tensor(1e-30, device=device)))
@@ -133,10 +134,18 @@ def cmaes(
         best_fitness_history.append(fitness[0].item())
 
         # --- Termination criteria ---
-        if fitness[0] <= stop_fitness or torch.max(D) > torch.tensor(1e7, device=device) * torch.min(D):
+        if fitness[0] <= stop_fitness and maximize is False or \
+            fitness[0] >= stop_fitness and maximize is True or \
+            torch.max(D) > torch.tensor(1e7, device=device) * torch.min(D):
             break
 
-        counteval += population_size
+        generation_number += 1
+        pbar.set_postfix({
+            "best_fitness": best_fitness_history[-1],
+            "mean_fitness": mean_fitness_history[-1]
+        })
+        pbar.update(population_size)
+    pbar.close()
 
     xmin = x[:, fitness_sort_index[0]]
 
