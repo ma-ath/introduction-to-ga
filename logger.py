@@ -80,6 +80,8 @@ def setup_logger(
 
     """
     logger = logging.getLogger(name)
+    if logger.hasHandlers():
+        logger.handlers.clear()
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
         "%(asctime)s [%(threadName)s][%(name)s][%(levelname)s]  %(message)s"
